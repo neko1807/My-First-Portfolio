@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Devil's Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="game.js" defer></script>
+  </head>
+  <body>
+    <section class="intro-screen" id="intro-screen" aria-labelledby="intro-title">
+      <div class="intro-fog fog-one"></div>
+      <div class="intro-fog fog-two"></div>
+      <div class="haunted-room" aria-hidden="true">
+        <div class="rotting-wall"></div><div class="wall-crack crack-a"></div><div class="wall-crack crack-b"></div>
+        <div class="portrait"><span></span></div>
+        <div class="door-shadow"></div>
+        <div class="candle candle-left"><i></i></div><div class="candle candle-right"><i></i></div>
+      </div>
+      <div class="grave-window"><span class="moon"></span><span class="rain rain-a"></span><span class="rain rain-b"></span></div>
+      <div class="specter" aria-hidden="true">
+        <div class="specter-hair"></div>
+        <div class="specter-head"><i class="eye left"></i><i class="eye right"></i><span class="specter-mouth"></span></div>
+        <div class="specter-body spectral-dress"></div>
+        <div class="specter-hand hand-left"></div><div class="specter-hand hand-right"></div>
+      </div>
+      <div class="waiting-board" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span class="waiting-bone bone-one"></span><span class="waiting-bone bone-two"></span></div>
+      <button class="intro-sound" id="intro-sound" type="button" aria-pressed="false"><span>◌</span> เปิดเสียง</button>
+      <label class="intro-volume" for="intro-volume"><span>เบา</span><input id="intro-volume" type="range" min="0" max="100" value="55" aria-label="ระดับเสียง" /><span>ดัง</span></label>
+      <div class="intro-copy">
+        <p class="eyebrow">THE DEVIL HAS BEEN WAITING</p>
+        <h2 id="intro-title">The Devil's<br /><em>Game</em></h2>
+        <p>มีบางสิ่งนั่งอยู่ฝั่งตรงข้าม<br />และมันเล่นมานานเกินกว่าที่คุณคิด</p>
+        <button id="begin-ritual" type="button">นั่งลงที่โต๊ะ <span>↯</span></button>
+        <small>กดเพื่อเริ่มพิธี พร้อมเปิดเสียงบรรยากาศ</small>
+      </div>
+    </section>
+    <div class="game-background" aria-hidden="true"></div>
+    <main class="game-shell" aria-live="polite">
+      <div class="grain"></div>
+      <header class="masthead">
+        <p class="eyebrow">A GAME OF SURVIVAL</p>
+        <h1>The Devil's <span>Game</span></h1>
+        <button class="sound-toggle" id="sound-toggle" type="button" aria-pressed="false">
+          <span class="sound-mark">◌</span> ปลุกเสียงแห่งความมืด
+        </button>
+        <label class="volume-control" for="game-volume"><span>เบา</span><input id="game-volume" type="range" min="0" max="100" value="55" aria-label="ระดับเสียง" /><span>ดัง</span></label>
+      </header>
+
+      <section class="ritual-card">
+        <div class="night-label">
+          <span>คืนที่</span>
+          <strong id="night-number">1</strong>
+          <span class="slash">/</span>
+          <span>5</span>
+        </div>
+        <div class="timer-wrap" aria-label="เวลาที่เหลือ">
+          <div class="timer-ring"><span id="turn-timer">10</span></div>
+          <small>ลมหายใจ</small>
+        </div>
+        <div class="survival-meter">
+          <span>อยู่รอด</span>
+          <div class="notches" id="survival-notches"></div>
+          <b id="survival-count">0 / 6</b>
+        </div>
+      </section>
+
+      <section class="play-area">
+        <aside class="whisper player-whisper">
+          <p class="speaker">คุณ</p>
+          <p>สามเหรียญ<br />หนึ่งทางรอด</p>
+          <div class="piece-legend"><i class="coin mini"></i><i class="coin mini"></i><i class="coin mini"></i></div>
+        </aside>
+
+        <div class="board-frame">
+          <div class="board" id="board" role="grid" aria-label="กระดาน The Devil's Game"></div>
+          <div class="blood-mark blood-mark-a"></div>
+          <div class="blood-mark blood-mark-b"></div>
+        </div>
+
+        <aside class="whisper devil-whisper">
+          <p class="speaker">THE DEVIL</p>
+          <p id="devil-line">ข้ารู้ว่าคิดอะไรอยู่</p>
+          <div class="piece-legend"><i class="bone mini"></i><i class="bone mini"></i><i class="bone mini"></i></div>
+        </aside>
+      </section>
+
+      <section class="message-panel" id="message-panel">
+        <p id="turn-message">วางเหรียญลงบนกระดาน</p>
+        <small id="rule-message">เมื่อมีครบสามเหรียญ จงย้ายหนึ่งเหรียญไปยังช่องว่าง</small>
+      </section>
+
+      <footer>
+        <button id="home-button" class="text-button" type="button">กลับหน้าหลัก</button>
+        <button id="restart-button" class="text-button" type="button">เริ่มพิธีใหม่</button>
+        <span>อย่าให้เขาชนะ</span>
+        <button id="help-button" class="text-button" type="button">กติกา</button>
+      </footer>
+    </main>
+
+    <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-content">
+        <p class="eyebrow" id="modal-kicker">THE DEVIL IS WATCHING</p>
+        <h2 id="modal-title">กติกาแห่งคืน</h2>
+        <p id="modal-copy">คุณและปีศาจมีหมากได้ฝ่ายละสามตัว วางให้ครบก่อน แล้วจึงย้ายหมากหนึ่งตัวไปยังช่องว่างในทุกตา จงมีชีวิตอยู่จนหลอดรอดชีวิตเต็ม อย่าสร้างสามตัวเรียงกัน—นั่นไม่ใช่ชัยชนะที่เขายอมรับ</p>
+        <button id="modal-button" type="button">รับรู้แล้ว</button>
+      </div>
+    </div>
+  </body>
+</html>
