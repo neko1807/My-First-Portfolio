@@ -262,7 +262,7 @@
       victoryTimer = null;
       document.body.classList.remove("devil-victory");
       endGame(false, "ผีชนะแล้ว", "ตาของเจ้าจบลงตั้งแต่ก่อนเริ่ม");
-    }, 1900);
+    }, 2800);
   }
   function clearVictorySequence() {
     window.clearTimeout(victoryTimer);
