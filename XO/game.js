@@ -240,6 +240,11 @@
     hand.setAttribute("aria-hidden", "true");
     hand.style.setProperty("--hand-x", `${target.offsetLeft + target.offsetWidth / 2}px`);
     hand.style.setProperty("--hand-y", `${target.offsetTop + target.offsetHeight / 2}px`);
+    const animation = document.createElement("dotlottie-wc");
+    animation.src = "assets/animations/skeletal-hand-taps.lottie";
+    animation.setAttribute("autoplay", "");
+    animation.setAttribute("speed", "1.2");
+    hand.append(animation);
     ui.board.append(hand);
     // Force the start frame to paint before the animation class is added.
     void hand.offsetWidth;
@@ -257,7 +262,7 @@
       victoryTimer = null;
       document.body.classList.remove("devil-victory");
       endGame(false, "ผีชนะแล้ว", "ตาของเจ้าจบลงตั้งแต่ก่อนเริ่ม");
-    }, 1350);
+    }, 1900);
   }
   function clearVictorySequence() {
     window.clearTimeout(victoryTimer);
