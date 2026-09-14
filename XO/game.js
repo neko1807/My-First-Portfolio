@@ -1,10 +1,13 @@
 (() => {
   "use strict";
 
+  // ===== ข้อมูลและกติกาของเกม =====
+  // กระดานเก็บค่า 9 ช่อง: H = ผู้เล่น, D = ผี, null = ช่องว่าง
   const HUMAN = "H";
   const DEVIL = "D";
   const EMPTY = null;
   const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  // ความยากของแต่ละคืน: เวลาต่อตา, จำนวนตาที่ต้องอยู่รอด และระดับเอฟเฟกต์
   const NIGHT_CONFIG = [
     null,
     { seconds: 10, survive: 6, madness: "calm" },
@@ -14,6 +17,7 @@
     { seconds: 3, survive: 10, madness: "panic" }
   ];
 
+  // รวมจุดอ้างอิงของ HTML ไว้ที่เดียว เพื่อให้ JavaScript อัปเดตหน้าจอได้ง่าย
   const ui = {
     board: document.querySelector("#board"), timer: document.querySelector("#turn-timer"),
     night: document.querySelector("#night-number"), count: document.querySelector("#survival-count"),
@@ -26,6 +30,7 @@
     modalCopy: document.querySelector("#modal-copy"), modalButton: document.querySelector("#modal-button")
   };
 
+  // ===== สถานะที่เปลี่ยนไปขณะเล่น =====
   let board = Array(9).fill(EMPTY);
   let currentPlayer = HUMAN;
   let selected = null;
@@ -42,6 +47,8 @@
   let victoryTimer = null;
   let volumeLevel = .55;
 
+  // ===== ฟังก์ชันจัดการกติกา =====
+  // เปลี่ยนกระดานและผู้เล่นให้เป็น key เดียว เพื่อใช้จดจำผลวิเคราะห์ของ Minimax
   const keyFor = (cells, player) => `${cells.map(v => v || "-").join("")}:${player}`;
   const count = (cells, player) => cells.reduce((n, piece) => n + (piece === player), 0);
   const winningLine = cells => WIN_LINES.find(([a,b,c]) => cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) || null;
@@ -49,12 +56,14 @@
     const line = winningLine(cells);
     return line ? cells[line[0]] : null;
   };
+  // คืนกระดานชุดใหม่เสมอ จึงไม่แก้ข้อมูลเดิมระหว่างการจำลองตาเดินของ AI
   const applyMove = (cells, move, player) => {
     const next = [...cells];
     if (move.type === "place") next[move.to] = player;
     else { next[move.from] = EMPTY; next[move.to] = player; }
     return next;
   };
+  // ก่อนมีหมาก 3 ตัว = วางหมาก; หลังจากนั้น = ย้ายหมากตัวเดิมไปยังช่องว่างใดก็ได้
   const legalMoves = (cells, player) => {
     const empty = cells.map((v,i) => v === EMPTY ? i : -1).filter(i => i >= 0);
     if (count(cells, player) < 3) return empty.map(to => ({ type: "place", to }));
@@ -62,8 +71,9 @@
     return own.flatMap(from => empty.map(to => ({ type: "move", from, to })));
   };
 
-  // Solves the entire reachable game graph once. Remaining cyclic states are draws.
-  // Result: 1 = Devil can force a win, 0 = draw, -1 = Human can force a win.
+  // ===== Minimax แบบวิเคราะห์ทั้งเกม =====
+  // สร้างกราฟของทุกกระดานที่เดินมาถึงได้เพียงครั้งเดียวตอนเปิดเกม
+  // ค่า 1 = ผีบังคับชนะได้, 0 = วนเป็นเสมอ, -1 = ผู้เล่นบังคับชนะได้
   function buildSolver() {
     const states = new Map();
     const visit = (cells, player) => {
@@ -84,11 +94,13 @@
     };
     visit(Array(9).fill(EMPTY), HUMAN);
 
+    // จุดจบของเกมเป็นคำตอบตั้งต้นสำหรับย้อนกลับไปประเมินตาก่อนหน้า
     for (const state of states.values()) {
       if (state.win === DEVIL) state.value = 1;
       if (state.win === HUMAN) state.value = -1;
     }
 
+    // ย้อนผลจากลูกไปยังพ่อจนไม่มีสถานะใดเปลี่ยนค่าอีก
     let changed = true;
     while (changed) {
       changed = false;
@@ -104,17 +116,20 @@
         }
       }
     }
+    // สถานะที่เหลือคือวงจรที่ไม่มีฝ่ายใดบังคับชนะ จึงนับเป็นเสมอ
     for (const state of states.values()) if (state.value === null) state.value = 0;
     return states;
   }
 
   function resultFor(cells, player) { return solver.get(keyFor(cells, player))?.value ?? 0; }
+  // ผีเลือกเฉพาะตาที่ได้คะแนนสูงสุด จึงไม่มีตาเดินที่ทำให้ผู้เล่นชนะได้
   function chooseDevilMove(cells) {
     const moves = legalMoves(cells, DEVIL);
     const rated = moves.map(move => ({ move, score: resultFor(applyMove(cells, move, DEVIL), HUMAN) }));
     const best = Math.max(...rated.map(item => item.score));
     return rated.filter(item => item.score === best)[Math.floor(Math.random() * rated.filter(item => item.score === best).length)].move;
   }
+  // เมื่อเวลาหมดในคืน 1–4 ผีเลือกตาแทนผู้เล่น โดยเลือกตาที่เสียเปรียบที่สุด
   function chooseCruelHumanMove(cells) {
     const moves = legalMoves(cells, HUMAN);
     const safe = moves.filter(move => winner(applyMove(cells, move, HUMAN)) !== HUMAN);
@@ -124,6 +139,8 @@
     return rated.find(item => item.score === best).move;
   }
 
+  // ===== การวาดหน้าจอ =====
+  // สร้างกระดาน 3×3 ใหม่ตาม state ปัจจุบัน พร้อมสถานะเลือก/วาง/ชนะ
   function render() {
     ui.board.innerHTML = "";
     board.forEach((piece, index) => {
@@ -147,6 +164,7 @@
     ui.notches.innerHTML = Array.from({ length: NIGHT_CONFIG[night].survive }, (_, index) => `<i class="notch ${index < survivedTurns ? "lit" : ""}"></i>`).join("");
   }
 
+  // คลิกครั้งแรกเลือกเหรียญ, คลิกช่องว่างครั้งถัดไปเพื่อย้ายเมื่อมีครบ 3 เหรียญ
   function handleCell(index) {
     if (locked || currentPlayer !== HUMAN || gameOver) return;
     const humanCount = count(board, HUMAN);
@@ -159,6 +177,7 @@
     if (selected !== null && board[index] === EMPTY) commitHumanMove({ type: "move", from: selected, to: index });
   }
 
+  // จบตาผู้เล่น: ตรวจเส้นของผู้เล่นก่อน แล้วจึงหน่วงให้ผีคิดและเดินตอบ
   function commitHumanMove(move) {
     selected = null;
     board = applyMove(board, move, HUMAN);
@@ -168,11 +187,12 @@
     currentPlayer = DEVIL;
     stopTimer();
     locked = true;
-    say("ปีศาจกำลังมองผ่านดวงตาคุณ…", "ข้ารู้ก่อนที่เจ้าจะขยับ");
+    say("ผีกำลังมองผ่านดวงตาคุณ…", "ข้ารู้ก่อนที่เจ้าจะขยับ");
     render();
     window.setTimeout(devilTurn, night >= 5 ? 680 : 440);
   }
 
+  // ตาผีใช้ผลจาก Minimax เลือกหมาก จากนั้นเพิ่มความคืบหน้าการอยู่รอด
   function devilTurn() {
     if (gameOver) return;
     const move = chooseDevilMove(board);
@@ -189,9 +209,10 @@
     startTimer();
   }
 
+  // ครบจำนวนตาที่กำหนด = ผ่านคืนนั้น ไม่ต้องเอาชนะผี
   function surviveNight() {
     stopTimer(); locked = true;
-    if (night === 5) { endGame(true, "คุณรอดพ้นจากคืนสุดท้าย", "เช้ากำลังมา… แม้ปีศาจจะยังจำชื่อคุณได้"); return; }
+    if (night === 5) { endGame(true, "คุณรอดพ้นจากคืนสุดท้าย", "เช้ากำลังมา… แม้ผีจะยังจำชื่อคุณได้"); return; }
     showModal("NIGHT SURVIVED", `คุณรอดจากคืนที่ ${night}`, "เขาปล่อยให้คุณมีชีวิตต่อไปอีกคืนหนึ่ง แต่คืนนี้เขาจะเร็วขึ้น", "เผชิญคืนถัดไป", () => { night++; resetBoardForNight(); });
   }
 
@@ -202,6 +223,8 @@
     render(); startTimer();
   }
 
+  // ===== ตัวจับเวลาและความกดดัน =====
+  // นับถอยหลังเฉพาะตาของผู้เล่น; เหลือ 3 วินาทีจะเปิด CSS class low-time
   function startTimer() {
     stopTimer();
     secondsLeft = NIGHT_CONFIG[night].seconds;
@@ -215,6 +238,7 @@
     }, 1000);
   }
   function stopTimer() { window.clearInterval(timerId); timerId = null; document.body.classList.remove("low-time"); }
+  // คืน 5 แพ้ทันทีเมื่อหมดเวลา; คืนก่อนหน้า ผีจะบังคับให้เดินตาที่เสียเปรียบ
   function timeExpired() {
     if (gameOver || currentPlayer !== HUMAN) return;
     if (night === 5) { endGame(false, "เวลาหมดลง", "ในคืนที่ห้า… ปีศาจเลือกแทนคุณ"); return; }
@@ -224,14 +248,16 @@
     animatePlacement(move.to);
     say("มือของคุณขยับเอง", "เขาเลือกหมากแทนคุณแล้ว");
     render();
-    window.setTimeout(() => { if (winner(board) === HUMAN) endGame(false, "ปีศาจบิดชัยชนะของคุณ", "ไม่มีทางชนะ มีเพียงการอยู่รอด"); else { currentPlayer = DEVIL; devilTurn(); } }, 650);
+    window.setTimeout(() => { if (winner(board) === HUMAN) endGame(false, "ผีบิดชัยชนะของคุณ", "ไม่มีทางชนะ มีเพียงการอยู่รอด"); else { currentPlayer = DEVIL; devilTurn(); } }, 650);
   }
 
   function say(message, devil) { ui.message.textContent = message; ui.devil.textContent = devil; }
+  // ส่ง index ของหมากที่เพิ่งวางให้ CSS เล่นเอฟเฟกต์ตกกระทบ
   function animatePlacement(index) {
     placedAt = index;
     window.setTimeout(() => { if (placedAt === index) placedAt = null; }, 560);
   }
+  // สร้างตัวเล่น Lottie ทับบนช่องชนะ แล้วกำหนดพิกัดจากตำแหน่งจริงของช่องนั้น
   function showDevilHand(index) {
     const target = ui.board.children[index];
     if (!target) return;
@@ -246,10 +272,11 @@
     animation.setAttribute("speed", "1.2");
     hand.append(animation);
     ui.board.append(hand);
-    // Force the start frame to paint before the animation class is added.
+    // บังคับให้เบราว์เซอร์วาดเฟรมแรกก่อนเติม class เพื่อให้ CSS animation เริ่มทุกครั้ง
     void hand.offsetWidth;
     hand.classList.add("placing");
   }
+  // หน่วง Game Over เพื่อให้ผู้เล่นเห็นมือผีและเส้นสามช่องที่ทำให้แพ้ก่อน
   function playDevilVictory(index) {
     stopTimer();
     locked = true;
@@ -287,7 +314,7 @@
   }
 
   function beginRitual() {
-    // This click is a user gesture, so the browser will permit the horror soundscape.
+    // การกดปุ่มเป็น user gesture จึงทำให้เบราว์เซอร์อนุญาตให้เริ่มเสียงได้
     if (!audio || !audio.enabled) enableAudio();
     ui.begin.disabled = true;
     ui.intro.classList.add("leave");
@@ -311,6 +338,7 @@
     render();
   }
 
+  // ===== เสียงบรรยากาศด้วย Web Audio API =====
   function enableAudio() {
     if (audio) {
       audio.enabled = !audio.enabled;
@@ -329,7 +357,7 @@
     gain.gain.value = .0001;
     gain.connect(ctx.destination);
 
-    // A detuned, very low drone: it feels unstable rather than musical.
+    // เสียงต่ำ 2 ความถี่ที่จูนไม่ตรงกัน สร้างความรู้สึกไม่มั่นคง
     const droneGain = ctx.createGain();
     droneGain.gain.value = .28;
     droneGain.connect(gain);
@@ -342,7 +370,7 @@
       drone.start();
     });
 
-    // Filtered noise provides a wind / broken-radio texture.
+    // noise ผ่าน filter ทำหน้าที่เหมือนลมและคลื่นวิทยุเสีย
     const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const noiseData = noiseBuffer.getChannelData(0);
     for (let i = 0; i < noiseData.length; i++) noiseData[i] = Math.random() * 2 - 1;
@@ -365,7 +393,7 @@
     noise.start();
     breath.start();
 
-    // A distant, slow metallic tone that fades under the noise.
+    // เสียงโลหะไกล ๆ สั่นช้าอยู่ใต้ชั้น noise
     const lament = ctx.createOscillator();
     lament.type = "sine";
     lament.frequency.value = 174;
@@ -419,14 +447,14 @@
 
   ui.restart.addEventListener("click", () => showModal("BEGIN AGAIN", "เริ่มพิธีใหม่?", "ความทรงจำของปีศาจจะไม่หายไป แต่กระดานจะว่างเปล่า", "เริ่มใหม่", startGame));
   ui.home.addEventListener("click", returnToMain);
-  ui.help.addEventListener("click", () => showModal("THE RULES", "กติกาแห่งคืน", "คุณและปีศาจมีหมากฝ่ายละสามตัว วางให้ครบก่อน แล้วจึงย้ายหมากหนึ่งตัวไปยังช่องว่างในทุกตา เป้าหมายไม่ใช่ชนะ—จงอยู่รอดให้ครบจำนวนตาของคืนนั้น", "กลับสู่กระดาน", () => {}));
+  ui.help.addEventListener("click", () => showModal("THE RULES", "กติกาแห่งคืน", "คุณและผีมีหมากฝ่ายละสามตัว วางให้ครบก่อน แล้วจึงย้ายหมากหนึ่งตัวไปยังช่องว่างในทุกตา เป้าหมายไม่ใช่ชนะ—จงอยู่รอดให้ครบจำนวนตาของคืนนั้น", "กลับสู่กระดาน", () => {}));
   ui.sound.addEventListener("click", enableAudio);
   ui.introSound.addEventListener("click", enableAudio);
   ui.introVolume.addEventListener("input", setVolume);
   ui.gameVolume.addEventListener("input", setVolume);
   ui.begin.addEventListener("click", beginRitual);
 
-  // Computing all reachable states makes the Devil's choices genuinely game-theoretic, not heuristic.
+  // วิเคราะห์ทุกสถานะก่อนเริ่มเล่น จึงเป็น AI เชิงทฤษฎีเกม ไม่ใช่การสุ่มหรือเดา
   solver = buildSolver();
   document.body.className = "calm intro-active";
   render();

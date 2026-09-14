@@ -8,11 +8,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <!-- ตัวเล่นไฟล์ .lottie สำหรับมือ skeletal ตอนผีชนะ -->
     <script type="module" src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.9.28/dist/dotlottie-wc.js"></script>
+    <!-- โค้ดกติกา AI ตัวจับเวลา เสียง และการควบคุมหน้าจอ -->
     <script src="game.js" defer></script>
   </head>
   <body>
+    <!-- โหลดแอนิเมชันมือรอไว้ล่วงหน้า เพื่อไม่ให้เห็นช้าในจังหวะแพ้ -->
     <dotlottie-wc class="lottie-preload" src="assets/animations/skeletal-hand-taps.lottie" speed="1.2" aria-hidden="true"></dotlottie-wc>
+    <!-- หน้ารอเริ่มเกม: เปิดเสียง ปรับระดับเสียง และเริ่มพิธี -->
     <section class="intro-screen" id="intro-screen" aria-labelledby="intro-title">
       <div class="intro-fog fog-one"></div>
       <div class="intro-fog fog-two"></div>
@@ -35,11 +39,12 @@
       <div class="intro-copy">
         <p class="eyebrow">THE GHOST HAS BEEN WAITING</p>
         <h2 id="intro-title">The Ghost<br /><em>Game</em></h2>
-        <p>มีบางสิ่งนั่งอยู่ฝั่งตรงข้าม<br />และมันเล่นมานานเกินกว่าที่คุณคิด</p>
+        <p>คุณตื่นมาในห้องนี้<br />และต้องเอาชนะผีเพื่อเอาชีวิตรอด</p>
         <button id="begin-ritual" type="button">นั่งลงที่โต๊ะ <span>↯</span></button>
         <small>กดเพื่อเริ่มพิธี พร้อมเปิดเสียงบรรยากาศ</small>
       </div>
     </section>
+    <!-- ฉากห้องนอนภาพเดิมถูกเบลอ เพื่อให้กระดานอ่านง่ายขณะเล่น -->
     <div class="game-background" aria-hidden="true"></div>
     <main class="game-shell" aria-live="polite">
       <div class="grain"></div>
@@ -52,6 +57,7 @@
         <label class="volume-control" for="game-volume"><span>เบา</span><input id="game-volume" type="range" min="0" max="100" value="55" aria-label="ระดับเสียง" /><span>ดัง</span></label>
       </header>
 
+      <!-- แสดงคืนปัจจุบัน ตัวจับเวลา และจำนวนตาที่ผู้เล่นต้องอยู่รอด -->
       <section class="ritual-card">
         <div class="night-label">
           <span>คืนที่</span>
@@ -77,6 +83,7 @@
           <div class="piece-legend"><i class="coin mini"></i><i class="coin mini"></i><i class="coin mini"></i></div>
         </aside>
 
+        <!-- JavaScript สร้างปุ่ม 9 ช่องภายใน #board ทุกครั้งที่ state เปลี่ยน -->
         <div class="board-frame">
           <div class="board" id="board" role="grid" aria-label="กระดาน The Devil's Game"></div>
           <div class="blood-mark blood-mark-a"></div>
@@ -98,16 +105,17 @@
       <footer>
         <button id="home-button" class="text-button" type="button">กลับหน้าหลัก</button>
         <button id="restart-button" class="text-button" type="button">เริ่มพิธีใหม่</button>
-        <span>อย่าให้เขาชนะ</span>
+
         <button id="help-button" class="text-button" type="button">กติกา</button>
       </footer>
     </main>
 
+    <!-- กล่องข้อความใช้ร่วมกันสำหรับกติกา ผ่านคืน และ Game Over -->
     <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-content">
         <p class="eyebrow" id="modal-kicker">THE DEVIL IS WATCHING</p>
         <h2 id="modal-title">กติกาแห่งคืน</h2>
-        <p id="modal-copy">คุณและปีศาจมีหมากได้ฝ่ายละสามตัว วางให้ครบก่อน แล้วจึงย้ายหมากหนึ่งตัวไปยังช่องว่างในทุกตา จงมีชีวิตอยู่จนหลอดรอดชีวิตเต็ม อย่าสร้างสามตัวเรียงกัน—นั่นไม่ใช่ชัยชนะที่เขายอมรับ</p>
+        <p id="modal-copy">คุณและผีมีหมากได้ฝ่ายละสามตัว วางให้ครบก่อน แล้วจึงย้ายหมากหนึ่งตัวไปยังช่องว่างในทุกตา จงมีชีวิตอยู่จนหลอดรอดชีวิตเต็ม อย่าสร้างสามตัวเรียงกัน—นั่นไม่ใช่ชัยชนะที่เขายอมรับ</p>
         <button id="modal-button" type="button">รับรู้แล้ว</button>
       </div>
     </div>
