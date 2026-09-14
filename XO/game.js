@@ -16,6 +16,15 @@
     { seconds: 5, survive: 9, madness: "disturbed" },
     { seconds: 3, survive: 10, madness: "panic" }
   ];
+  // เนื้อเรื่องจะปลดล็อกเมื่อผ่านแต่ละคืน: ผู้เล่นค่อย ๆ รู้ว่าเกิดอะไรขึ้นในห้องนี้
+  const STORY_FRAGMENTS = [
+    null,
+    { tag: "FRAGMENT 01 / 05", object: "นาฬิกาข้างเตียง", title: "เวลา 03:17", copy: "นาฬิกาที่ตายไปนานเริ่มเดินอีกครั้ง… แล้วหยุดที่ 03:17 ใต้หน้าปัดมีรอยขีดเป็นชื่อ “มาลี” ซ้ำแล้วซ้ำเล่า" },
+    { tag: "FRAGMENT 02 / 05", object: "ภาพถ่ายบนผนัง", title: "คนที่หายไปจากรูป", copy: "ในภาพถ่ายเก่ามีหญิงสาวยืนข้างคุณ แต่ใบหน้าของเธอถูกขูดออกจนเหลือเพียงรอยเล็บยาว ๆ จากด้านในกรอบ" },
+    { tag: "FRAGMENT 03 / 05", object: "ตู้เสื้อผ้า", title: "เธอไม่ได้จากไป", copy: "เสียงเคาะดังมาจากในตู้สามครั้ง คุณพบคำว่า “อย่าล็อกประตู” เขียนด้วยเลือดแห้งอยู่หลังบานไม้" },
+    { tag: "FRAGMENT 04 / 05", object: "จดหมายที่ไม่เคยส่ง", title: "คำขอความช่วยเหลือ", copy: "กระดาษฉีกขาดเขียนว่า “ถ้าเขากลับมา อย่าปล่อยให้เขาเข้าห้อง” ลายมือท้ายจดหมายเหมือนลายมือของคุณ" },
+    { tag: "FRAGMENT 05 / 05", object: "ความทรงจำที่ถูกฝัง", title: "คุณไม่ใช่ผู้รอดชีวิต", copy: "ผีไม่ได้รอคู่ต่อสู้… เธอรอคุณกลับมาที่ห้องเดิม เวลา 03:17 คือคืนที่คุณล็อกเธอไว้ และทิ้งเธอให้ตายเพียงลำพัง" }
+  ];
 
   // รวมจุดอ้างอิงของ HTML ไว้ที่เดียว เพื่อให้ JavaScript อัปเดตหน้าจอได้ง่าย
   const ui = {
@@ -27,7 +36,8 @@
     sound: document.querySelector("#sound-toggle"), modal: document.querySelector("#modal"),
     intro: document.querySelector("#intro-screen"), begin: document.querySelector("#begin-ritual"), introSound: document.querySelector("#intro-sound"), introVolume: document.querySelector("#intro-volume"), gameVolume: document.querySelector("#game-volume"),
     modalKicker: document.querySelector("#modal-kicker"), modalTitle: document.querySelector("#modal-title"),
-    modalCopy: document.querySelector("#modal-copy"), modalButton: document.querySelector("#modal-button")
+    modalCopy: document.querySelector("#modal-copy"), modalButton: document.querySelector("#modal-button"),
+    fragmentCard: document.querySelector("#fragment-card"), fragmentTag: document.querySelector("#fragment-tag"), fragmentObject: document.querySelector("#fragment-object")
   };
 
   // ===== สถานะที่เปลี่ยนไปขณะเล่น =====
@@ -212,8 +222,13 @@
   // ครบจำนวนตาที่กำหนด = ผ่านคืนนั้น ไม่ต้องเอาชนะผี
   function surviveNight() {
     stopTimer(); locked = true;
-    if (night === 5) { endGame(true, "คุณรอดพ้นจากคืนสุดท้าย", "เช้ากำลังมา… แม้ผีจะยังจำชื่อคุณได้"); return; }
-    showModal("NIGHT SURVIVED", `คุณรอดจากคืนที่ ${night}`, "เขาปล่อยให้คุณมีชีวิตต่อไปอีกคืนหนึ่ง แต่คืนนี้เขาจะเร็วขึ้น", "เผชิญคืนถัดไป", () => { night++; resetBoardForNight(); });
+    const fragment = STORY_FRAGMENTS[night];
+    if (night === 5) {
+      gameOver = true;
+      showModal("THE LAST FRAGMENT", fragment.title, fragment.copy, "เริ่มพิธีใหม่", startGame, fragment);
+      return;
+    }
+    showModal("FRAGMENT UNLOCKED", fragment.title, fragment.copy, "เก็บเบาะแส แล้วเผชิญคืนถัดไป", () => { night++; resetBoardForNight(); }, fragment);
   }
 
   function resetBoardForNight() {
@@ -302,9 +317,18 @@
     showModal(survived ? "DAWN" : "GAME OVER", title, copy, "เริ่มพิธีใหม่", startGame);
     render();
   }
-  function showModal(kicker, title, copy, buttonText, action) {
-    ui.modalKicker.textContent = kicker; ui.modalTitle.textContent = title; ui.modalCopy.textContent = copy; ui.modalButton.textContent = buttonText;
-    ui.modal.classList.remove("hidden"); ui.modalButton.onclick = () => { ui.modal.classList.add("hidden"); action?.(); };
+  // modal เดียวใช้หลายสถานการณ์; ส่ง fragment มาเฉพาะตอนปลดล็อกเนื้อเรื่อง
+  function showModal(kicker, title, copy, buttonText, action, fragment = null) {
+    ui.modalKicker.textContent = kicker; ui.modalTitle.textContent = title; ui.modalCopy.innerHTML = copy.replace(
+  /(\d{2}:\d{2})/g,
+  '<span class="inline-time">$1</span>'
+); ui.modalButton.textContent = buttonText;
+    // หัวข้อที่เป็นตัวเลข (เช่น 03:17) ใช้ฟอนต์อ่านง่ายกว่าหัวข้อเนื้อเรื่องทั่วไป
+    ui.modalTitle.classList.toggle("numeric-title", /\d/.test(title));
+    ui.fragmentCard.classList.toggle("hidden", !fragment);
+    ui.modal.classList.toggle("story-modal", Boolean(fragment));
+    if (fragment) { ui.fragmentTag.textContent = fragment.tag; ui.fragmentObject.textContent = fragment.object; }
+    ui.modal.classList.remove("hidden"); ui.modalButton.onclick = () => { ui.modal.classList.remove("story-modal"); ui.modal.classList.add("hidden"); action?.(); };
   }
   function startGame() {
     clearVictorySequence();
@@ -330,7 +354,7 @@
     locked = true;
     gameOver = false;
     selected = null;
-    ui.modal.classList.add("hidden");
+    ui.modal.classList.remove("story-modal"); ui.modal.classList.add("hidden");
     ui.begin.disabled = false;
     ui.intro.classList.remove("hidden", "leave");
     document.body.className = "calm intro-active";
