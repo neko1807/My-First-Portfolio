@@ -47,6 +47,8 @@
   let night = 1;
   let survivedTurns = 0;
   let timerId = null;
+  // ตัวจับเวลาย่อยสำหรับเสียง tick ที่จะถี่ขึ้นเมื่อใกล้หมดเวลา
+  let pressureTickId = null;
   let secondsLeft = 0;
   let locked = false;
   let gameOver = false;
@@ -239,7 +241,7 @@
   }
 
   // ===== ตัวจับเวลาและความกดดัน =====
-  // นับถอยหลังเฉพาะตาของผู้เล่น; เหลือ 3 วินาทีจะเปิด CSS class low-time
+  // นับถอยหลังเฉพาะตาของผู้เล่น และเพิ่มแรงกดดันเป็น 3 ระดับตามเวลาที่เหลือ
   function startTimer() {
     stopTimer();
     secondsLeft = NIGHT_CONFIG[night].seconds;
@@ -247,12 +249,44 @@
     timerId = window.setInterval(() => {
       secondsLeft--;
       ui.timer.textContent = Math.max(0, secondsLeft);
-      pulseTick(secondsLeft <= 3 ? 0.12 : 0.03);
-      document.body.classList.toggle("low-time", secondsLeft <= 3);
+      setTimerPressure();
+      if (secondsLeft > 0) {
+        // เริ่มเสียงเร็วที่ 5 วิ: 5-4 วิเตือน, 3-2 วิกดดัน, 1 วิกระตุกสุดขีด
+        if (secondsLeft <= 5) startUrgencyTicks();
+        else pulseTick(0.03);
+      }
       if (secondsLeft <= 0) { stopTimer(); timeExpired(); }
     }, 1000);
+    setTimerPressure();
+    // คืน 5 มีเวลาเริ่มต้นเพียง 3 วินาที จึงต้องเริ่มความกดดันทันที
+    if (secondsLeft <= 5) startUrgencyTicks();
   }
-  function stopTimer() { window.clearInterval(timerId); timerId = null; document.body.classList.remove("low-time"); }
+  function stopTimer() {
+    window.clearInterval(timerId); timerId = null;
+    window.clearTimeout(pressureTickId); pressureTickId = null;
+    document.body.classList.remove("time-warning", "low-time", "last-second");
+  }
+  // CSS แต่ละ class ทำหน้าที่คนละระดับ จึงเห็นแรงกดดันไต่ขึ้นชัดเจน
+  function setTimerPressure() {
+    document.body.classList.toggle("time-warning", secondsLeft > 0 && secondsLeft <= 5);
+    document.body.classList.toggle("low-time", secondsLeft > 0 && secondsLeft <= 3);
+    document.body.classList.toggle("last-second", secondsLeft === 1);
+  }
+  // เสียง tick ยิ่งสั้นยิ่งถี่: 5-4 วิ, 3-2 วิ และวินาทีสุดท้าย
+  function startUrgencyTicks() {
+    if (pressureTickId !== null) return;
+    const urgentTick = () => {
+      if (!timerId || gameOver || currentPlayer !== HUMAN || secondsLeft <= 0 || secondsLeft > 5) {
+        pressureTickId = null;
+        return;
+      }
+      const finalSecond = secondsLeft === 1;
+      const critical = secondsLeft <= 3;
+      pulseTick(finalSecond ? 0.19 : critical ? 0.12 : 0.06);
+      pressureTickId = window.setTimeout(urgentTick, finalSecond ? 150 : critical ? 280 : 540);
+    };
+    urgentTick();
+  }
   // คืน 5 แพ้ทันทีเมื่อหมดเวลา; คืนก่อนหน้า ผีจะบังคับให้เดินตาที่เสียเปรียบ
   function timeExpired() {
     if (gameOver || currentPlayer !== HUMAN) return;
